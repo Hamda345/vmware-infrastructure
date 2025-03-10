@@ -1,0 +1,185 @@
+- name: Configure FortiGate Perimeter Firewall (FW1)
+  hosts: perimeter
+  connection: httpapi
+  collections:
+    - fortinet.fortios
+  vars:
+    ansible_httpapi_use_ssl: yes
+    ansible_httpapi_validate_certs: no
+    ansible_httpapi_port: 443
+    vdom: "root"
+  tasks:
+    - name: Configure system global settings
+      fortios_system_global:
+        vdom: "{{ vdom }}"
+        system_global:
+          hostname: "FortiGate-FW1"
+          admintimeout: 60
+
+    - name: Configure interfaces
+      fortios_system_interface:
+        vdom: "{{ vdom }}"
+        system_interface:
+          name: "port1"
+          mode: "static"
+          ip: "192.168.20.1 255.255.255.0"
+          allowaccess: "ping https ssh"
+          
+    - name: Configure second interface
+      fortios_system_interface:
+        vdom: "{{ vdom }}"
+        system_interface:
+          name: "port2"
+          mode: "static"
+          ip: "192.168.40.1 255.255.255.0"
+          allowaccess: "ping"
+          
+    - name: Create DMZ to Security policy
+      fortios_firewall_policy:
+        vdom: "{{ vdom }}"
+        state: "present"
+        firewall_policy:
+          name: "DMZ-to-Security"
+          srcintf: 
+            - name: "port1"
+          dstintf:
+            - name: "port2"
+          srcaddr:
+            - name: "all"
+          dstaddr:
+            - name: "all"
+          service:
+            - name: "ALL"
+          action: "accept"
+          schedule: "always"
+          nat: "disable"
+          status: "enable"
+
+    - name: Create Security to DMZ policy
+      fortios_firewall_policy:
+        vdom: "{{ vdom }}"
+        state: "present"
+        firewall_policy:
+          name: "Security-to-DMZ"
+          srcintf: 
+            - name: "port2"
+          dstintf:
+            - name: "port1"
+          srcaddr:
+            - name: "all"
+          dstaddr:
+            - name: "all"
+          service:
+            - name: "ALL" 
+          action: "accept"
+          schedule: "always"
+          nat: "disable"
+          status: "enable"
+
+- name: Configure FortiGate Internal Firewall (FW2)
+  hosts: internal
+  connection: httpapi
+  collections:
+    - fortinet.fortios
+  vars:
+    ansible_httpapi_use_ssl: yes
+    ansible_httpapi_validate_certs: no
+    ansible_httpapi_port: 443
+    vdom: "root"
+  tasks:
+    - name: Configure system global settings
+      fortios_system_global:
+        vdom: "{{ vdom }}"
+        system_global:
+          hostname: "FortiGate-FW2"
+          admintimeout: 60
+
+    - name: Configure security interface
+      fortios_system_interface:
+        vdom: "{{ vdom }}"
+        system_interface:
+          name: "port1"
+          mode: "static"
+          ip: "192.168.40.2 255.255.255.0"
+          allowaccess: "ping https ssh"
+          
+    - name: Configure servers interface
+      fortios_system_interface:
+        vdom: "{{ vdom }}"
+        system_interface:
+          name: "port2"
+          mode: "static"
+          ip: "192.168.10.1 255.255.255.0"
+          allowaccess: "ping"
+          
+    - name: Configure users interface
+      fortios_system_interface:
+        vdom: "{{ vdom }}"
+        system_interface:
+          name: "port3"
+          mode: "static"
+          ip: "192.168.30.1 255.255.255.0"
+          allowaccess: "ping"
+      
+    - name: Create Security to Servers policy
+      fortios_firewall_policy:
+        vdom: "{{ vdom }}"
+        state: "present"
+        firewall_policy:
+          name: "Security-to-Servers"
+          srcintf: 
+            - name: "port1"
+          dstintf:
+            - name: "port2"
+          srcaddr:
+            - name: "all"
+          dstaddr:
+            - name: "all"
+          service:
+            - name: "ALL"
+          action: "accept"
+          schedule: "always"
+          nat: "disable"
+          status: "enable"
+
+    - name: Create Security to Users policy
+      fortios_firewall_policy:
+        vdom: "{{ vdom }}"
+        state: "present"
+        firewall_policy:
+          name: "Security-to-Users"
+          srcintf: 
+            - name: "port1"
+          dstintf:
+            - name: "port3"
+          srcaddr:
+            - name: "all"
+          dstaddr:
+            - name: "all"
+          service:
+            - name: "ALL"
+          action: "accept"
+          schedule: "always"
+          nat: "disable"
+          status: "enable"
+
+    - name: Create Users to Servers policy
+      fortios_firewall_policy:
+        vdom: "{{ vdom }}"
+        state: "present"
+        firewall_policy:
+          name: "Users-to-Servers"
+          srcintf: 
+            - name: "port3"
+          dstintf:
+            - name: "port2"
+          srcaddr:
+            - name: "all"
+          dstaddr:
+            - name: "all"
+          service:
+            - name: "ALL"
+          action: "accept"
+          schedule: "always"
+          nat: "disable"
+          status: "enable"

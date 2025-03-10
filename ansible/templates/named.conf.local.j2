@@ -1,0 +1,29 @@
+zone "example.com" {
+    type master;
+    file "/etc/bind/db.example.com";
+    allow-update { none; };
+};
+
+zone "10.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.192";
+    allow-update { none; };
+};
+
+zone "20.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.192";
+    allow-update { none; };
+};
+
+zone "30.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.192";
+    allow-update { none; };
+};
+
+zone "40.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.192";
+    allow-update { none; };
+};

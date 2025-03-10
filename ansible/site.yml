@@ -1,0 +1,17 @@
+- name: Configure FortiGate Firewalls
+  import_playbook: playbooks/configure_firewalls.yml
+
+- name: Configure Web Server
+  import_playbook: playbooks/configure_web_server.yml
+
+- name: Configure SIEM Server with Wazuh
+  import_playbook: playbooks/configure_siem_server.yml
+
+- name: Configure Database Server
+  import_playbook: playbooks/configure_db_server.yml
+
+- name: Configure LDAP/AD/DNS Server
+  import_playbook: playbooks/configure_ldap_server.yml
+
+- name: Install Wazuh Agents on All Linux Servers
+  import_playbook: playbooks/install_wazuh_agents.yml

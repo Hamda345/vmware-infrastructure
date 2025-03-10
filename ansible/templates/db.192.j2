@@ -1,0 +1,23 @@
+$TTL    604800
+@       IN      SOA     example.com. admin.example.com. (
+                  1         ; Serial
+             604800         ; Refresh
+              86400         ; Retry
+            2419200         ; Expire
+             604800 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.example.com.
+
+; VLAN 10 - Servers
+10.168.192.in-addr.arpa.   IN      PTR     db.example.com.
+
+; VLAN 20 - DMZ
+1.20.168.192.in-addr.arpa.  IN      PTR     fw1.example.com.
+10.20.168.192.in-addr.arpa. IN      PTR     www.example.com.
+
+; VLAN 30 - Users
+10.30.168.192.in-addr.arpa. IN      PTR     ldap.example.com.
+
+; VLAN 40 - Security
+1.40.168.192.in-addr.arpa.  IN      PTR     fw2.example.com.
+10.40.168.192.in-addr.arpa. IN      PTR     siem.example.com.

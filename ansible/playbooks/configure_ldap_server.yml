@@ -1,0 +1,101 @@
+- name: Configure LDAP/AD/DNS Server
+  hosts: ldap-server
+  become: true
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - slapd
+          - ldap-utils
+          - libldap-common
+          - bind9
+          - bind9utils
+          - bind9-doc
+          - ufw
+          - fail2ban
+          - openssh-server
+        state: present
+      when: ansible_os_family == "Debian"
+
+    # Configure OpenLDAP
+    - name: Set LDAP admin password
+      debconf:
+        name: slapd
+        question: slapd/password1
+        value: "ldapadminpassword"  # Change this
+        vtype: password
+      when: ansible_os_family == "Debian"
+
+    - name: Set LDAP admin password confirmation
+      debconf:
+        name: slapd
+        question: slapd/password2
+        value: "ldapadminpassword"  # Change this
+        vtype: password
+      when: ansible_os_family == "Debian"
+
+    - name: Reconfigure SLAPD
+      command: dpkg-reconfigure -f noninteractive slapd
+      when: ansible_os_family == "Debian"
+
+    # Configure Bind DNS
+    - name: Configure BIND options
+      template:
+        src: templates/named.conf.options.j2
+        dest: /etc/bind/named.conf.options
+      notify: restart bind
+
+    - name: Configure BIND local settings
+      template:
+        src: templates/named.conf.local.j2
+        dest: /etc/bind/named.conf.local
+      notify: restart bind
+
+    - name: Create forward zone file
+      template:
+        src: templates/db.example.com.j2
+        dest: /etc/bind/db.example.com
+      notify: restart bind
+
+    - name: Create reverse zone file
+      template:
+        src: templates/db.192.j2
+        dest: /etc/bind/db.192
+      notify: restart bind
+
+    - name: Configure UFW
+      ufw:
+        state: enabled
+        policy: deny
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - '22'     # SSH
+        - '389'    # LDAP
+        - '636'    # LDAPS
+        - '53/tcp' # DNS (TCP)
+        - '53/udp' # DNS (UDP)
+
+    # Enable services
+    - name: Enable and start slapd service
+      service:
+        name: slapd
+        state: started
+        enabled: yes
+
+    - name: Enable and start bind9 service
+      service:
+        name: bind9
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart bind
+      service:
+        name: bind9
+        state: restarted

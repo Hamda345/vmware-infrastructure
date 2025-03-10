@@ -1,0 +1,63 @@
+- name: Configure Database Server
+  hosts: db-server
+  become: true
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - postgresql
+          - postgresql-contrib
+          - ufw
+          - fail2ban
+          - openssh-server
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Configure PostgreSQL to listen on all interfaces
+      lineinfile:
+        path: /etc/postgresql/*/main/postgresql.conf
+        regexp: "^#?listen_addresses\\s*=.*$"
+        line: "listen_addresses = '*'"
+        state: present
+      notify: restart postgresql
+
+    - name: Configure PostgreSQL authentication
+      copy:
+        dest: /etc/postgresql/*/main/pg_hba.conf
+        content: |
+          # TYPE  DATABASE        USER            ADDRESS                 METHOD
+          local   all             postgres                                peer
+          local   all             all                                     md5
+          host    all             all             127.0.0.1/32            md5
+          host    all             all             ::1/128                 md5
+          host    all             all             192.168.10.0/24         md5
+          host    all             all             192.168.30.0/24         md5
+        backup: yes
+      notify: restart postgresql
+
+    - name: Configure UFW
+      ufw:
+        state: enabled
+        policy: deny
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - '22'
+        - '5432'
+
+    - name: Enable and start PostgreSQL
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart postgresql
+      service:
+        name: postgresql
+        state: restarted

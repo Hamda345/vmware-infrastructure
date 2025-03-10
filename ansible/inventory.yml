@@ -1,0 +1,48 @@
+all:
+  children:
+    firewalls:
+      children:
+        perimeter:
+          hosts:
+            fortigate-fw1:
+              ansible_host: "{{ fw1_ip }}"
+              ansible_user: admin
+              ansible_network_os: admin
+        internal:
+          hosts:
+            fortigate-fw2:
+              ansible_host: "{{ fw2_ip }}"
+              ansible_user: admin
+              ansible_network_os: admin
+    dmz:
+      hosts:
+        web-server:
+          ansible_host: "{{ web_server_ip }}"
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    security:
+      hosts:
+        siem-server:
+          ansible_host: "{{ siem_server_ip }}"
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    servers:
+      hosts:
+        db-server:
+          ansible_host: "{{ db_server_ip }}"
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    users:
+      hosts:
+        ldap-server:
+          ansible_host: "{{ ldap_server_ip }}"
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    fw1_ip: "192.168.20.1"  
+    fw2_ip: "192.168.40.1"  
+    web_server_ip: "192.168.20.10"  
+    siem_server_ip: "192.168.40.10"  
+    db_server_ip: "192.168.10.10"  
+    ldap_server_ip: "192.168.30.10"  

@@ -1,0 +1,55 @@
+- name: Configure Web Server
+  hosts: web-server
+  become: true
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - nginx
+          - ufw
+          - fail2ban
+          - openssh-server
+          - python3-pip
+        state: present
+
+    - name: Configure UFW
+      ufw:
+        state: enabled
+        policy: deny
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - '22'
+        - '80'
+        - '443'
+
+    - name: Configure Nginx
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+      notify: restart nginx
+
+    - name: Create index page
+      copy:
+        content: "<html><body><h1>Web Server</h1><p>Welcome to the DMZ web server.</p></body></html>"
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: 0644
+
+    - name: Enable and start Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
