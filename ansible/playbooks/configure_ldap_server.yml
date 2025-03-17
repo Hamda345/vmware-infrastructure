@@ -5,7 +5,7 @@
     - name: Update package cache
       apt:
         update_cache: yes
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Install required packages
       package:
@@ -20,28 +20,28 @@
           - fail2ban
           - openssh-server
         state: present
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     # Configure OpenLDAP
     - name: Set LDAP admin password
       debconf:
         name: slapd
         question: slapd/password1
-        value: "ldapadminpassword"  # Change this
+        value: "ldapadminpassword"  
         vtype: password
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Set LDAP admin password confirmation
       debconf:
         name: slapd
         question: slapd/password2
-        value: "ldapadminpassword"  # Change this
+        value: "ldapadminpassword"  
         vtype: password
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Reconfigure SLAPD
       command: dpkg-reconfigure -f noninteractive slapd
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     # Configure Bind DNS
     - name: Configure BIND options

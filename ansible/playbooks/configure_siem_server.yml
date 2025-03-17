@@ -1,0 +1,196 @@
+- name: Configure SIEM Server with Wazuh using Docker
+  hosts: siem-server
+  become: true
+  vars:
+    wazuh_version: "4.5.1"
+    elastic_version: "7.17.9"
+    docker_compose_version: "2.18.1"
+    wazuh_directory: "/opt/wazuh-docker"
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - curl
+          - apt-transport-https
+          - lsb-release
+          - gnupg2
+          - git
+          - python3-pip
+          - python3-setuptools
+        state: present
+
+    # Install Docker
+    - name: Install Docker dependencies
+      package:
+        name:
+          - ca-certificates
+          - gnupg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Docker packages
+      package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Install Docker Compose
+    - name: Download Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    # Create directory structure
+    - name: Create Wazuh Docker directory
+      file:
+        path: "{{ wazuh_directory }}"
+        state: directory
+        mode: '0755'
+
+    # Clone Wazuh Docker repository
+    - name: Clone Wazuh Docker repository
+      git:
+        repo: https://github.com/wazuh/wazuh-docker.git
+        dest: "{{ wazuh_directory }}/repo"
+        version: "{{ wazuh_version }}"
+
+    # Create docker-compose.yml
+    - name: Create docker-compose.yml
+      copy:
+        dest: "{{ wazuh_directory }}/docker-compose.yml"
+        content: |
+          version: '3.9'
+
+          services:
+            wazuh-indexer:
+              image: wazuh/wazuh-indexer:{{ wazuh_version }}
+              hostname: wazuh-indexer
+              restart: always
+              ports:
+                - "9200:9200"
+              environment:
+                - "ELASTIC_CLUSTER=wazuh-cluster"
+                - "ELASTIC_NODE_NAME=wazuh-indexer"
+                - "ELASTIC_NETWORK_HOST=0.0.0.0"
+                - "discovery.type=single-node"
+              volumes:
+                - wazuh-indexer-data:/usr/share/wazuh-indexer/data
+              networks:
+                - wazuh-network
+
+            wazuh-manager:
+              image: wazuh/wazuh-manager:{{ wazuh_version }}
+              hostname: wazuh-manager
+              restart: always
+              ports:
+                - "1514:1514/udp"
+                - "1515:1515"
+                - "1516:1516"
+                - "55000:55000"
+              environment:
+                - INDEXER_URL=https://wazuh-indexer:9200
+                - INDEXER_USERNAME=admin
+                - INDEXER_PASSWORD=SecretPassword
+                - FILEBEAT_SSL_VERIFICATION=none
+              volumes:
+                - wazuh-manager-config:/var/ossec/etc
+                - wazuh-manager-logs:/var/ossec/logs
+                - wazuh-manager-stats:/var/ossec/stats
+                - wazuh-manager-ruleset:/var/ossec/ruleset
+                - wazuh-manager-queue:/var/ossec/queue
+              depends_on:
+                - wazuh-indexer
+              networks:
+                - wazuh-network
+
+            wazuh-dashboard:
+              image: wazuh/wazuh-dashboard:{{ wazuh_version }}
+              hostname: wazuh-dashboard
+              restart: always
+              ports:
+                - "5601:5601"
+              environment:
+                - INDEXER_USERNAME=admin
+                - INDEXER_PASSWORD=SecretPassword
+                - WAZUH_API_URL=https://wazuh-manager
+              depends_on:
+                - wazuh-indexer
+                - wazuh-manager
+              networks:
+                - wazuh-network
+
+          networks:
+            wazuh-network:
+              driver: bridge
+
+          volumes:
+            wazuh-indexer-data:
+            wazuh-manager-config:
+            wazuh-manager-logs:
+            wazuh-manager-stats:
+            wazuh-manager-ruleset:
+            wazuh-manager-queue:
+
+    # Start Wazuh containers
+    - name: Start Wazuh containers
+      command: docker-compose up -d
+      args:
+        chdir: "{{ wazuh_directory }}"
+
+    # Configure Firewall
+    - name: Configure UFW for SIEM server
+      ufw:
+        state: enabled
+        policy: deny
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - '22'    # SSH
+        - '5601'  # Wazuh Dashboard
+        - '1514'  # Wazuh agent connections
+        - '1515'  # Agent registration service
+        - '1516'  # Wazuh cluster
+        - '55000' # Wazuh API
+      
+    - name: Wait for services to be ready
+      pause:
+        seconds: 60
+        prompt: "Waiting for Wazuh services to initialize..."
+
+    - name: Display access information
+      debug:
+        msg: |
+          Wazuh installation completed!
+          
+          Access the Wazuh dashboard at: https://{{ ansible_host }}:5601
+          Default credentials are usually:
+          - Username: admin
+          - Password: SecretPassword (Change this in production!)
+          
+          Wazuh API is available at: https://{{ ansible_host }}:55000

@@ -5,7 +5,7 @@
     - name: Update package cache
       apt:
         update_cache: yes
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Install required packages
       package:
@@ -16,7 +16,7 @@
           - fail2ban
           - openssh-server
         state: present
-      when: ansible_os_family == "Debian"
+      when: ansible_os_family == "Ubuntu"
 
     - name: Configure PostgreSQL to listen on all interfaces
       lineinfile:

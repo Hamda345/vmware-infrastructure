@@ -17,6 +17,12 @@ all:
     dmz:
       hosts:
         web-server:
+          ansible_host: "{{ web_server_dmz_ip }}"
+          ansible_user: ansible
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    web-server:
+      hosts:
+        web-server:
           ansible_host: "{{ web_server_ip }}"
           ansible_user: ansible
           ansible_ssh_private_key_file: ~/.ssh/id_rsa
@@ -42,7 +48,8 @@ all:
     ansible_python_interpreter: /usr/bin/python3
     fw1_ip: "192.168.20.1"  
     fw2_ip: "192.168.40.1"  
-    web_server_ip: "192.168.20.10"  
+    web_server_ip: "192.168.10.20"  
+    web_server_dmz_ip: "192.168.20.10"  
     siem_server_ip: "192.168.40.10"  
     db_server_ip: "192.168.10.10"  
     ldap_server_ip: "192.168.30.10"  
